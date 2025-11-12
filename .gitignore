@@ -1,0 +1,56 @@
+# ASP.NET Core general
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+appsettings.json
+appsettings.*.json
+
+# Visual Studio
+.vs/
+*.vscode/
+*.ncb
+*.sdf
+*.cache
+*.dbmdl
+
+# Rider
+.idea/
+
+# SQLite database file
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# Entity Framework Core Migrations
+*.Designer.cs
+
+# Logs
+*.log
+
+# NuGet
+*.nupkg
+packages/
+.nuget/
+
+# Dotnet
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Publish output
+publish/
+wwwroot/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
+# Testing
+coverage-report
+TestResults
