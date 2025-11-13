@@ -1,8 +1,7 @@
 ﻿using APUW.Model.DTOs.Auth;
-using APUW.Model.DTOs.Auth.Requests;
 using APUW.Tests.Util;
+using APUW.Tests.Util.ClientExtensions;
 using System.Net;
-using System.Net.Http.Json;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -13,16 +12,12 @@ namespace APUW.Tests.Tests.Integration
         private readonly HttpClient _client = factory.CreateClient();
 
         [Fact]
-        public async Task Login_ValidCredentials_ReturnsToken()
+        public async Task Login_WithValidCredentials_ReturnsToken()
         {
             await factory.SeedDatabaseAsync();
 
             var request = DataHelpers.GetUserRegisterPayload();
-            var response = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequestDto
-            {
-                Username = request.Username,
-                Password = request.Password,
-            });
+            var response = await _client.Login(request.Username, request.Password);
             var result = await response.GetResult<LoginResultDto>(outputHelper);
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -30,35 +25,35 @@ namespace APUW.Tests.Tests.Integration
         }
 
         [Fact]
-        public async Task Login_InvalidCredentials_ReturnsUnauthorized()
+        public async Task Login_WithInvalidCredentials_ReturnsUnauthorized()
         {
             await factory.SeedDatabaseAsync();
 
             var request = DataHelpers.GetUserRegisterPayload();
             request.Password = request.Password + "_wrong";
 
-            var response = await _client.PostAsJsonAsync("/api/auth/login", request);
+            var response = await _client.Login(request.Username, request.Password);
             await response.GetResult(outputHelper);
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
         [Fact]
-        public async Task Register_DuplicateUsername_ReturnsConflict()
+        public async Task Register_WithDuplicateUsername_ReturnsConflict()
         {
             await factory.SeedDatabaseAsync();
 
             var request = DataHelpers.GenerateRegisterRequest();
             await _client.RegisterAndLogin(request.Username, request.Password);
 
-            var response = await _client.PostAsJsonAsync("/api/auth/register", request);
+            var response = await _client.Register(request.Username, request.Password);
             await response.GetResult(outputHelper);
 
             Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         }
 
         [Fact]
-        public async Task Login_MissingConfiguration_ReturnsInternalServerError()
+        public async Task Login_WithMissingConfiguration_ReturnsInternalServerError()
         {
             var factoryWithMissingConfig = new CustomWebApplicationFactory()
                 .WithWebHostBuilder(builder =>

@@ -54,6 +54,7 @@ namespace APUW.Domain.Services
 
             return Result.Success(new LoginResultDto()
             {
+                Id = user.Id,
                 Token = new JwtSecurityTokenHandler().WriteToken(token)
             });
         }

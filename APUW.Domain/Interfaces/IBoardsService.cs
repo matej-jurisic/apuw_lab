@@ -9,11 +9,11 @@ namespace APUW.Domain.Interfaces
     {
         Task<Result<List<BoardDto>>> GetBoardList();
         Task<Result<BoardDto>> CreateBoard(CreateBoardRequestDto request);
-        Task<Result<BoardDto>> GetBoard(int id);
-        Task<Result<BoardDto>> UpdateBoard(int id, UpdateBoardRequestDto request);
-        Task<Result> DeleteBoard(int id);
-        Task<Result<List<UserDto>>> GetBoardMembers(int id);
-        Task<Result> AddBoardMember(int id, int userId);
-        Task<Result> RemoveBoardMember(int id, int userId);
+        Task<Result<BoardDto>> GetBoard(int boardId);
+        Task<Result<BoardDto>> UpdateBoard(int boardId, UpdateBoardRequestDto request);
+        Task<Result> DeleteBoard(int boardId);
+        Task<Result<List<UserDto>>> GetBoardMembers(int boardId);
+        Task<Result> AddBoardMember(int boardId, int userId);
+        Task<Result> RemoveBoardMember(int boardId, int userId);
     }
 }
