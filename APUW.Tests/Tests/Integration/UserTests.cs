@@ -46,7 +46,7 @@ namespace APUW.Tests.Tests.Integration
         {
             await factory.SeedDatabaseAsync();
 
-            var (userId, _) = await _client.CreateAndGetUserId(outputHelper);
+            var (userId, _) = await _client.CreateAndGetUser(outputHelper);
 
             var adminUser = DataHelpers.GetAdminUserRegisterPayload();
             await _client.Login(adminUser.Username, adminUser.Password);

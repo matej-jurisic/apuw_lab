@@ -18,7 +18,7 @@ namespace APUW.Tests.Tests.Integration
         public async Task CreateBoard_AsUser_ReturnsSuccessAndUserBecomesOwner()
         {
             await factory.SeedDatabaseAsync();
-            var (_, user) = await _client.CreateAndGetUserId(outputHelper);
+            var (_, user) = await _client.CreateAndGetUser(outputHelper);
 
             await _client.Login(user.Username, user.Password);
 
@@ -39,7 +39,7 @@ namespace APUW.Tests.Tests.Integration
             await _client.Login(admin.Username, admin.Password);
 
             var boardResponse = await _client.CreateBoard("Board1");
-            var boardResult = await boardResponse.GetResult<BoardDto>(outputHelper);
+            await boardResponse.GetResult<BoardDto>(outputHelper);
 
             Assert.Equal(HttpStatusCode.Forbidden, boardResponse.StatusCode);
         }
@@ -67,14 +67,34 @@ namespace APUW.Tests.Tests.Integration
         }
 
         [Fact]
+        public async Task GetBoardList_AsAdmin_ReturnsAllBoards()
+        {
+            await factory.SeedDatabaseAsync();
+            var (userId, user) = await _client.CreateAndGetUser(outputHelper);
+            await _client.Login(user.Username, user.Password);
+
+            var board1 = await _client.CreateBoard($"{user.Username}'s Board");
+            Assert.Equal(HttpStatusCode.OK, board1.StatusCode);
+
+            var admin = DataHelpers.GetAdminUserRegisterPayload();
+            await _client.Login(admin.Username, admin.Password);
+
+            var response = await _client.GetAsync("/api/boards");
+            var result = await response.GetResult<List<BoardDto>>(outputHelper);
+
+            Assert.NotNull(result?.Data);
+            Assert.Contains(result.Data, b => b.Name == $"{user.Username}'s Board");
+        }
+
+        [Fact]
         public async Task GetBoard_AsBoardMember_ReturnsSuccess()
         {
             await factory.SeedDatabaseAsync();
 
-            var (userId, user) = await _client.CreateAndGetUserId(outputHelper);
+            var (userId, user) = await _client.CreateAndGetUser(outputHelper);
 
             await _client.RegisterAndLogin();
-            var board = await _client.CreateBoardAndGetDto("Board1", outputHelper);
+            var board = await _client.CreateBoardAndGetResult("Board1", outputHelper);
             await _client.AddMemberToBoard(board.Id, userId);
 
             await _client.Login(user.Username, user.Password);
@@ -91,10 +111,10 @@ namespace APUW.Tests.Tests.Integration
         {
             await factory.SeedDatabaseAsync();
 
-            var (_, user) = await _client.CreateAndGetUserId(outputHelper);
+            var (_, user) = await _client.CreateAndGetUser(outputHelper);
 
             await _client.RegisterAndLogin();
-            var board = await _client.CreateBoardAndGetDto("Board1", outputHelper);
+            var board = await _client.CreateBoardAndGetResult("Board1", outputHelper);
 
             await _client.Login(user.Username, user.Password);
             var response = await _client.GetAsync($"/api/boards/{board.Id}");
@@ -105,12 +125,27 @@ namespace APUW.Tests.Tests.Integration
         }
 
         [Fact]
+        public async Task UpdateBoard_WithInvalidId_ReturnsNotFound()
+        {
+            await factory.SeedDatabaseAsync();
+            await _client.RegisterAndLogin();
+
+            var updateResponse = await _client.PutAsJsonAsync($"/api/boards/9999", new UpdateBoardRequestDto
+            {
+                Name = "Board2"
+            });
+            await updateResponse.GetResult<BoardDto>(outputHelper);
+
+            Assert.Equal(HttpStatusCode.NotFound, updateResponse.StatusCode);
+        }
+
+        [Fact]
         public async Task UpdateBoard_AsOwner_ReturnsSuccees()
         {
             await factory.SeedDatabaseAsync();
             await _client.RegisterAndLogin();
 
-            var board = await _client.CreateBoardAndGetDto("Board1", outputHelper);
+            var board = await _client.CreateBoardAndGetResult("Board1", outputHelper);
 
             var updateResponse = await _client.PutAsJsonAsync($"/api/boards/{board.Id}", new UpdateBoardRequestDto
             {
@@ -128,10 +163,10 @@ namespace APUW.Tests.Tests.Integration
         {
             await factory.SeedDatabaseAsync();
 
-            var (userId, user) = await _client.CreateAndGetUserId(outputHelper);
+            var (userId, user) = await _client.CreateAndGetUser(outputHelper);
 
             await _client.RegisterAndLogin();
-            var board = await _client.CreateBoardAndGetDto("Board1", outputHelper);
+            var board = await _client.CreateBoardAndGetResult("Board1", outputHelper);
             await _client.AddMemberToBoard(board.Id, userId);
 
             await _client.Login(user.Username, user.Password);
@@ -151,7 +186,7 @@ namespace APUW.Tests.Tests.Integration
             await factory.SeedDatabaseAsync();
             await _client.RegisterAndLogin();
 
-            var board = await _client.CreateBoardAndGetDto("Board1", outputHelper);
+            var board = await _client.CreateBoardAndGetResult("Board1", outputHelper);
 
             var deleteResponse = await _client.DeleteAsync($"/api/boards/{board.Id}");
             Assert.Equal(HttpStatusCode.OK, deleteResponse.StatusCode);
@@ -169,7 +204,7 @@ namespace APUW.Tests.Tests.Integration
             await factory.SeedDatabaseAsync();
             await _client.RegisterAndLogin();
 
-            var board = await _client.CreateBoardAndGetDto("Board1", outputHelper);
+            var board = await _client.CreateBoardAndGetResult("Board1", outputHelper);
 
             var admin = DataHelpers.GetAdminUserRegisterPayload();
             await _client.Login(admin.Username, admin.Password);
@@ -188,10 +223,10 @@ namespace APUW.Tests.Tests.Integration
         {
             await factory.SeedDatabaseAsync();
 
-            var (userId, user) = await _client.CreateAndGetUserId(outputHelper);
+            var (userId, user) = await _client.CreateAndGetUser(outputHelper);
 
             await _client.RegisterAndLogin();
-            var board = await _client.CreateBoardAndGetDto("Board1", outputHelper);
+            var board = await _client.CreateBoardAndGetResult("Board1", outputHelper);
             await _client.AddMemberToBoard(board.Id, userId);
 
             await _client.Login(user.Username, user.Password);
@@ -211,7 +246,7 @@ namespace APUW.Tests.Tests.Integration
             await factory.SeedDatabaseAsync();
 
             await _client.RegisterAndLogin();
-            var board = await _client.CreateBoardAndGetDto("Board1", outputHelper);
+            var board = await _client.CreateBoardAndGetResult("Board1", outputHelper);
 
             var boardMembersResponse = await _client.GetAsync($"/api/boards/{board.Id}/members");
 
@@ -224,7 +259,7 @@ namespace APUW.Tests.Tests.Integration
             await factory.SeedDatabaseAsync();
 
             await _client.RegisterAndLogin();
-            var board = await _client.CreateBoardAndGetDto("Board1", outputHelper);
+            var board = await _client.CreateBoardAndGetResult("Board1", outputHelper);
 
             await _client.RegisterAndLogin();
 
@@ -239,9 +274,9 @@ namespace APUW.Tests.Tests.Integration
             await factory.SeedDatabaseAsync();
 
             await _client.RegisterAndLogin();
-            var board = await _client.CreateBoardAndGetDto("Board", outputHelper);
+            var board = await _client.CreateBoardAndGetResult("Board", outputHelper);
 
-            var (userId, _) = await _client.CreateAndGetUserId(outputHelper);
+            var (userId, _) = await _client.CreateAndGetUser(outputHelper);
 
             var response = await _client.AddMemberToBoard(board.Id, userId);
             response.EnsureSuccessStatusCode();
@@ -253,9 +288,9 @@ namespace APUW.Tests.Tests.Integration
             await factory.SeedDatabaseAsync();
 
             await _client.RegisterAndLogin();
-            var board = await _client.CreateBoardAndGetDto("Board", outputHelper);
+            var board = await _client.CreateBoardAndGetResult("Board", outputHelper);
 
-            var (_, user) = await _client.CreateAndGetUserId(outputHelper);
+            var (_, user) = await _client.CreateAndGetUser(outputHelper);
             await _client.Login(user.Username, user.Password);
 
             var response = await _client.AddMemberToBoard(board.Id, 100);
@@ -268,9 +303,9 @@ namespace APUW.Tests.Tests.Integration
             await factory.SeedDatabaseAsync();
 
             await _client.RegisterAndLogin();
-            var board = await _client.CreateBoardAndGetDto("Board", outputHelper);
+            var board = await _client.CreateBoardAndGetResult("Board", outputHelper);
 
-            var (userId, user) = await _client.CreateAndGetUserId(outputHelper);
+            var (userId, user) = await _client.CreateAndGetUser(outputHelper);
             await _client.AddMemberToBoard(board.Id, userId);
 
             await _client.Login(user.Username, user.Password);
@@ -285,9 +320,9 @@ namespace APUW.Tests.Tests.Integration
             await factory.SeedDatabaseAsync();
 
             await _client.RegisterAndLogin();
-            var board = await _client.CreateBoardAndGetDto("Board", outputHelper);
+            var board = await _client.CreateBoardAndGetResult("Board", outputHelper);
 
-            var (userId, user) = await _client.CreateAndGetUserId(outputHelper);
+            var (userId, user) = await _client.CreateAndGetUser(outputHelper);
             await _client.AddMemberToBoard(board.Id, userId);
 
             await _client.Login(user.Username, user.Password);

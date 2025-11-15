@@ -17,7 +17,7 @@ namespace APUW.Tests.Util.ClientExtensions
             });
         }
 
-        public static async Task<BoardDto> CreateBoardAndGetDto(this HttpClient client, string name, ITestOutputHelper outputHelper)
+        public static async Task<BoardDto> CreateBoardAndGetResult(this HttpClient client, string name, ITestOutputHelper outputHelper)
         {
             var response = await client.CreateBoard(name);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);

@@ -68,9 +68,9 @@ namespace APUW.Tests.Util.ClientExtensions
             await client.SetBearerToken(null);
         }
 
-        public static async Task<(int UserId, RegisterRequestDto Request)> CreateAndGetUserId(this HttpClient client, ITestOutputHelper outputHelper)
+        public static async Task<(int UserId, RegisterRequestDto Request)> CreateAndGetUser(this HttpClient client, ITestOutputHelper outputHelper)
         {
-            var user = DataHelpers.GetUserRegisterPayload();
+            var user = DataHelpers.GenerateRegisterRequest();
             await client.Register(user.Username, user.Password);
             var loginResponse = await client.PostAsJsonAsync("/api/auth/login", new LoginRequestDto
             {
