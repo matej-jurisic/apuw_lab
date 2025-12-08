@@ -14,7 +14,7 @@ namespace APUW.Domain.Services
     {
         private readonly AppDbContext _context = context;
         private readonly ICurrentUserService _currentUserService = currentUserService;
-        private readonly UserDto _currentUser = currentUserService.GetCurrentUser();
+        private UserDto CurrentUser => _currentUserService.GetCurrentUser();
 
         public async Task<Result<TicketDto>> CreateTicket(int boardId, CreateTicketRequestDto request)
         {
@@ -22,7 +22,7 @@ namespace APUW.Domain.Services
 
             if (board == null) return Result.Failure(ResultStatus.NotFound, "Board not found.");
 
-            var isMember = await _context.UserBoards.AnyAsync(x => x.UserId == _currentUser.Id && x.BoardId == boardId);
+            var isMember = await _context.UserBoards.AnyAsync(x => x.UserId == CurrentUser.Id && x.BoardId == boardId);
 
             if (!isMember) return Result.Failure(ResultStatus.Forbidden, "You are not authorized to create tickets in this board.");
 
@@ -43,9 +43,13 @@ namespace APUW.Domain.Services
             await _context.Tickets.AddAsync(ticket);
             await _context.SaveChangesAsync();
 
-            await CreateEvent(ticket.Id, $"Ticket '{ticket.Name}' was created by {_currentUser.Username}.");
+            await CreateEvent(ticket.Id, $"Ticket '{ticket.Name}' was created by {CurrentUser.Username}.");
 
-            return await GetTicket(boardId, ticket.Id);
+            var createdTicketResult = await GetTicket(boardId, ticket.Id);
+
+            if (createdTicketResult.IsFailure) return createdTicketResult;
+
+            return Result.Success(createdTicketResult.Data, code: ResultStatus.Created);
         }
 
         public async Task<Result> DeleteTicket(int boardId, int ticketId)
@@ -56,20 +60,19 @@ namespace APUW.Domain.Services
 
             if (ticket == null) return Result.Failure(ResultStatus.NotFound, "Ticket not found.");
 
-            if (ticket.Board.OwnerId != _currentUser.Id) return Result.Failure(ResultStatus.Forbidden, "You are not authorized to delete tickets in this board.");
+            if (ticket.Board.OwnerId != CurrentUser.Id) return Result.Failure(ResultStatus.Forbidden, "You are not authorized to delete tickets in this board.");
 
             _context.Tickets.Remove(ticket);
             await _context.SaveChangesAsync();
 
-            return Result.Success();
+            await CreateEvent(ticketId, $"Ticket '{ticket.Name}' was deleted by {CurrentUser.Username}.");
+
+            return Result.Success(code: ResultStatus.NoContent);
         }
 
         public async Task<Result<List<EventDto>>> GetEventList(int boardId, int ticketId)
         {
-            var isAdmin = await _currentUserService.HasRole("Admin");
-            var isMember = await _context.UserBoards.AnyAsync(x => x.BoardId == boardId && x.UserId == _currentUser.Id);
-
-            if (!isAdmin && !isMember) return Result.Failure(ResultStatus.Forbidden, "You are not authorized to access events in this board.");
+            if (!await CanAccessBoard(boardId)) return Result.Failure(ResultStatus.Forbidden, "You are not authorized to access events in this board.");
 
             var events = await _context.Events
                 .Where(x => x.TicketId == ticketId && x.Ticket.BoardId == boardId)
@@ -91,10 +94,7 @@ namespace APUW.Domain.Services
 
         public async Task<Result<TicketDto>> GetTicket(int boardId, int ticketId)
         {
-            var isAdmin = await _currentUserService.HasRole("Admin");
-            var isMember = await _context.UserBoards.AnyAsync(x => x.BoardId == boardId && x.UserId == _currentUser.Id);
-
-            if (!isAdmin && !isMember) return Result.Failure(ResultStatus.Forbidden, "You are not authorized to access tickets in this board.");
+            if (!await CanAccessBoard(boardId)) return Result.Failure(ResultStatus.Forbidden, "You are not authorized to access tickets in this board.");
 
             var ticket = await _context.Tickets
                 .Where(x => x.BoardId == boardId)
@@ -119,10 +119,7 @@ namespace APUW.Domain.Services
 
         public async Task<Result<List<TicketListItemDto>>> GetTicketList(int boardId)
         {
-            var isAdmin = await _currentUserService.HasRole("Admin");
-            var isMember = await _context.UserBoards.AnyAsync(x => x.BoardId == boardId && x.UserId == _currentUser.Id);
-
-            if (!isAdmin && !isMember) return Result.Failure(ResultStatus.Forbidden, "You are not authorized to access tickets in this board.");
+            if (!await CanAccessBoard(boardId)) return Result.Failure(ResultStatus.Forbidden, "You are not authorized to access tickets in this board.");
 
             var tickets = await _context.Tickets
                 .Where(x => x.BoardId == boardId)
@@ -150,7 +147,7 @@ namespace APUW.Domain.Services
 
             if (ticket == null) return Result.Failure(ResultStatus.NotFound, "Ticket not found.");
 
-            if (ticket.AssignedToUserId != _currentUser.Id && ticket.Board.OwnerId != _currentUser.Id) return Result.Failure(ResultStatus.Forbidden, "You are not authorized to update tickets in this board.");
+            if (ticket.AssignedToUserId != CurrentUser.Id && ticket.Board.OwnerId != CurrentUser.Id) return Result.Failure(ResultStatus.Forbidden, "You are not authorized to update tickets in this board.");
 
             if (request.AssignedToUserId != null)
             {
@@ -162,17 +159,17 @@ namespace APUW.Domain.Services
             {
                 var assignedUser = await _context.Users.FindAsync(request.AssignedToUserId);
                 var assignedUsername = assignedUser?.Username ?? "none";
-                await CreateEvent(ticket.Id, $"Ticket assigned to '{assignedUsername}' by {_currentUser.Username}.");
+                await CreateEvent(ticket.Id, $"Ticket assigned to '{assignedUsername}' by {CurrentUser.Username}.");
             }
 
             if (ticket.Content != request.Content)
             {
-                await CreateEvent(ticket.Id, $"Ticket content was updated by {_currentUser.Username}.");
+                await CreateEvent(ticket.Id, $"Ticket content was updated by {CurrentUser.Username}.");
             }
 
             if (ticket.Name != request.Name)
             {
-                await CreateEvent(ticket.Id, $"Ticket name changed from '{ticket.Name}' to '{request.Name}' by {_currentUser.Username}.");
+                await CreateEvent(ticket.Id, $"Ticket name changed from '{ticket.Name}' to '{request.Name}' by {CurrentUser.Username}.");
             }
 
             ticket.AssignedToUserId = request.AssignedToUserId;
@@ -189,7 +186,7 @@ namespace APUW.Domain.Services
             var createdEvent = new Event
             {
                 Content = content,
-                CreatedByUserId = _currentUser.Id,
+                CreatedByUserId = CurrentUser.Id,
                 CreatedDate = DateTime.UtcNow,
                 TicketId = ticketId,
             };
@@ -197,5 +194,12 @@ namespace APUW.Domain.Services
             await _context.Events.AddAsync(createdEvent);
             await _context.SaveChangesAsync();
         }
+
+        private async Task<bool> CanAccessBoard(int boardId)
+        {
+            return await _currentUserService.HasRole("Admin")
+                || await _context.UserBoards.AnyAsync(x => x.BoardId == boardId && x.UserId == CurrentUser.Id);
+        }
+
     }
 }

@@ -22,7 +22,7 @@ namespace APUW.Tests.Util.ClientExtensions
         public static async Task<TicketDto> CreateTicketAndGetResult(this HttpClient client, ITestOutputHelper outputHelper, string name, string content, int boardId, int? assigneeId = null)
         {
             var response = await client.CreateTicket(name, content, boardId, assigneeId);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
             var result = await response.GetResult<TicketDto>(outputHelper);
             Assert.NotNull(result?.Data);
             return result.Data;

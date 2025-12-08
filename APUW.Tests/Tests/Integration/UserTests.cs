@@ -57,7 +57,7 @@ namespace APUW.Tests.Tests.Integration
             });
 
             await response.GetResult(outputHelper);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            response.EnsureSuccessStatusCode();
         }
     }
 }

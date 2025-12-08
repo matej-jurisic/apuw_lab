@@ -34,7 +34,7 @@ namespace APUW.Domain.Services
                     RoleId = role.Id
                 });
 
-                return Result.Success();
+                return Result.Success(code: ResultStatus.NoContent);
             });
         }
 

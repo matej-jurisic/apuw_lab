@@ -14,17 +14,19 @@ namespace APUW.Domain.Services
     {
         private readonly AppDbContext _context = context;
         private readonly ICurrentUserService _currentUserService = currentUserService;
-        private readonly UserDto _currentUser = currentUserService.GetCurrentUser();
+        private UserDto CurrentUser => _currentUserService.GetCurrentUser();
 
-        public async Task<Result> AddBoardMember(int boardId, int userId)
+        public async Task<Result<BoardMemberDto>> AddBoardMember(int boardId, int userId)
         {
             var isAdmin = await _currentUserService.HasRole("Admin");
 
-            var board = await _context.Boards.FindAsync(boardId);
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return Result.Failure(ResultStatus.NotFound, "User not found.");
 
+            var board = await _context.Boards.FindAsync(boardId);
             if (board == null) return Result.Failure(ResultStatus.NotFound, "Board not found.");
 
-            if (!isAdmin && board.OwnerId != _currentUser.Id)
+            if (!isAdmin && board.OwnerId != CurrentUser.Id)
                 return Result.Failure(ResultStatus.Forbidden, "You are not authorized to add board members.");
 
             var existsBoardMember = await _context.UserBoards.AnyAsync(x => x.BoardId == boardId && x.UserId == userId);
@@ -39,7 +41,14 @@ namespace APUW.Domain.Services
 
             await _context.UserBoards.AddAsync(userBoard);
             await _context.SaveChangesAsync();
-            return Result.Success();
+
+            var boardMember = new BoardMemberDto()
+            {
+                BoardName = board.Name,
+                Username = user.Username,
+            };
+
+            return Result.Success(boardMember, code: ResultStatus.Created);
         }
 
         public async Task<Result<BoardDto>> CreateBoard(CreateBoardRequestDto request)
@@ -47,10 +56,10 @@ namespace APUW.Domain.Services
             var newBoard = new Board
             {
                 Name = request.Name,
-                OwnerId = _currentUser.Id
+                OwnerId = CurrentUser.Id
             };
 
-            return await _context.InTransaction(async () =>
+            var boardResult = await _context.InTransaction(async () =>
             {
                 await _context.Boards.AddAsync(newBoard);
                 await _context.SaveChangesAsync();
@@ -58,12 +67,16 @@ namespace APUW.Domain.Services
                 await _context.UserBoards.AddAsync(new UserBoard
                 {
                     BoardId = newBoard.Id,
-                    UserId = _currentUser.Id
+                    UserId = CurrentUser.Id
                 });
                 await _context.SaveChangesAsync();
 
                 return await GetBoard(newBoard.Id);
             });
+
+            if (boardResult.IsFailure) return boardResult;
+
+            return Result.Success(boardResult.Data, code: ResultStatus.Created);
         }
 
         public async Task<Result> DeleteBoard(int boardId)
@@ -74,33 +87,27 @@ namespace APUW.Domain.Services
 
             if (board == null) return Result.Failure(ResultStatus.NotFound, "Board not found.");
 
-            if (!isAdmin && board.OwnerId != _currentUser.Id)
+            if (!isAdmin && board.OwnerId != CurrentUser.Id)
                 return Result.Failure(ResultStatus.Forbidden, "You are not authorized to delete the board.");
 
             _context.Boards.Remove(board);
             await _context.SaveChangesAsync();
-            return Result.Success();
+            return Result.Success(code: ResultStatus.NoContent);
         }
 
         public async Task<Result<BoardDto>> GetBoard(int boardId)
         {
-            var isAdmin = await _currentUserService.HasRole("Admin");
-
             var board = await _context.Boards.Select(x => new BoardDto
             {
                 Id = x.Id,
-                IsOwner = x.OwnerId == _currentUser.Id,
+                IsOwner = x.OwnerId == CurrentUser.Id,
                 OwnerUsername = x.Owner.Username,
                 Name = x.Name
             }).FirstOrDefaultAsync(x => x.Id == boardId);
 
             if (board == null) return Result.Failure(ResultStatus.NotFound, "Board not found.");
 
-            if (isAdmin) return Result.Success(board);
-
-            var isMember = await _context.UserBoards.AnyAsync(x => x.UserId == _currentUser.Id && x.BoardId == boardId);
-
-            if (!isMember) return Result.Failure(ResultStatus.Forbidden, "You are not authorized to access the board.");
+            if (!await CanAccessBoard(boardId)) return Result.Failure(ResultStatus.Forbidden, "You are not authorized to access the board.");
 
             return Result.Success(board);
         }
@@ -115,18 +122,18 @@ namespace APUW.Domain.Services
                 {
                     Id = x.Id,
                     Name = x.Name,
-                    IsOwner = x.OwnerId == _currentUser.Id,
+                    IsOwner = x.OwnerId == CurrentUser.Id,
                     OwnerUsername = x.Owner.Username
                 }).ToListAsync();
 
                 return Result.Success(adminBoardList);
             }
 
-            var boardList = await _context.UserBoards.Where(x => x.UserId == _currentUser.Id).Select(x => new BoardDto
+            var boardList = await _context.UserBoards.Where(x => x.UserId == CurrentUser.Id).Select(x => new BoardDto
             {
                 Id = x.Board.Id,
                 Name = x.Board.Name,
-                IsOwner = x.Board.OwnerId == _currentUser.Id,
+                IsOwner = x.Board.OwnerId == CurrentUser.Id,
                 OwnerUsername = x.Board.Owner.Username,
             }).ToListAsync();
 
@@ -139,10 +146,7 @@ namespace APUW.Domain.Services
 
             if (board == null) return Result.Failure(ResultStatus.NotFound, "Board not found.");
 
-            var isAdmin = await _currentUserService.HasRole("Admin");
-            var isMember = await _context.UserBoards.AnyAsync(x => x.UserId == _currentUser.Id && x.BoardId == board.Id);
-
-            if (!isMember && !isAdmin) return Result.Failure(ResultStatus.Forbidden, "You are not authorized to access the board.");
+            if (!await CanAccessBoard(boardId)) return Result.Failure(ResultStatus.Forbidden, "You are not authorized to access the board.");
 
             var boardMembers = await _context.UserBoards.Where(x => x.BoardId == boardId).Select(x => new UserDto
             {
@@ -162,18 +166,18 @@ namespace APUW.Domain.Services
 
             if (board == null) return Result.Failure(ResultStatus.NotFound, "Board not found.");
 
-            if (!isAdmin && board.OwnerId != _currentUser.Id && userId != _currentUser.Id)
+            if (!isAdmin && board.OwnerId != CurrentUser.Id && userId != CurrentUser.Id)
                 return Result.Failure(ResultStatus.Forbidden, "You are not authorized to remove other board members.");
 
             var userBoard = await _context.UserBoards.FirstOrDefaultAsync(x => x.BoardId == boardId && x.UserId == userId);
-            if (userBoard == null) return Result.Failure(ResultStatus.BadRequest, "User is not a member of the board.");
+            if (userBoard == null) return Result.Failure(ResultStatus.NotFound, "User is not a member of the board.");
             _context.UserBoards.Remove(userBoard);
 
             var userTickets = await _context.Tickets.Where(x => x.AssignedToUserId == userId).ToListAsync();
             foreach (var ut in userTickets) ut.AssignedToUserId = null;
 
             await _context.SaveChangesAsync();
-            return Result.Success();
+            return Result.Success(code: ResultStatus.NoContent);
         }
 
         public async Task<Result<BoardDto>> UpdateBoard(int boardId, UpdateBoardRequestDto request)
@@ -185,7 +189,7 @@ namespace APUW.Domain.Services
                 return Result.Failure(ResultStatus.NotFound, "Board not found");
             }
 
-            if (board.OwnerId != _currentUser.Id)
+            if (board.OwnerId != CurrentUser.Id)
             {
                 return Result.Failure(ResultStatus.Forbidden, "Only owners can update boards.");
             }
@@ -194,6 +198,12 @@ namespace APUW.Domain.Services
             await _context.SaveChangesAsync();
 
             return await GetBoard(boardId);
+        }
+
+        private async Task<bool> CanAccessBoard(int boardId)
+        {
+            return await _currentUserService.HasRole("Admin")
+                || await _context.UserBoards.AnyAsync(x => x.BoardId == boardId && x.UserId == CurrentUser.Id);
         }
     }
 }

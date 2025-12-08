@@ -24,7 +24,7 @@ namespace APUW.API.Controllers
         /// </remarks>
         [HttpPut("{id}/roles")]
         [CheckRoles("Admin")]
-        [SwaggerResponse(StatusCodes.Status200OK, "Role changed successfully.", typeof(Result))]
+        [SwaggerResponse(StatusCodes.Status204NoContent, "Role changed successfully.")]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "User is not in role Admin.", typeof(Result))]
         [SwaggerResponse(StatusCodes.Status404NotFound, "User or role not found.", typeof(Result))]
         public async Task<IActionResult> ChangeUserRole(int id, ChangeUserRoleRequestDto request)

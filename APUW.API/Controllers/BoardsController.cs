@@ -49,7 +49,7 @@ namespace APUW.API.Controllers
         /// </remarks>
         [HttpPost]
         [CheckRoles("User")]
-        [SwaggerResponse(StatusCodes.Status200OK, "Board created successfully.", typeof(Result<BoardDto>))]
+        [SwaggerResponse(StatusCodes.Status201Created, "Board created successfully.", typeof(Result<BoardDto>))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "User is not in role User.", typeof(Result))]
         public async Task<IActionResult> CreateBoard(CreateBoardRequestDto request)
         {
@@ -78,7 +78,7 @@ namespace APUW.API.Controllers
         /// Only accessible by board owners or users with role Admin
         /// </remarks>
         [HttpDelete("{boardId}")]
-        [SwaggerResponse(StatusCodes.Status200OK, "Board deleted successfully.", typeof(Result))]
+        [SwaggerResponse(StatusCodes.Status204NoContent, "Board deleted successfully.")]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "User is not authorized to delete the board.", typeof(Result))]
         [SwaggerResponse(StatusCodes.Status404NotFound, "Board not found.", typeof(Result))]
         public async Task<IActionResult> DeleteBoard(int boardId)
@@ -107,8 +107,8 @@ namespace APUW.API.Controllers
         /// <remarks>
         /// Only accessible by board owners or users with role Admin
         /// </remarks>
-        [HttpPost("{boardId}/members/{userId}")]
-        [SwaggerResponse(StatusCodes.Status200OK, type: typeof(Result))]
+        [HttpPut("{boardId}/members/{userId}")]
+        [SwaggerResponse(StatusCodes.Status201Created, type: typeof(Result<BoardMemberDto>))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "User is not authorized to add board members.", typeof(Result))]
         [SwaggerResponse(StatusCodes.Status404NotFound, "Board not found.", typeof(Result))]
         [SwaggerResponse(StatusCodes.Status409Conflict, "User is already a member of the board.", typeof(Result))]
@@ -125,10 +125,9 @@ namespace APUW.API.Controllers
         /// Members can remove themselves.
         /// </remarks>
         [HttpDelete("{boardId}/members/{userId}")]
-        [SwaggerResponse(StatusCodes.Status200OK, type: typeof(Result))]
-        [SwaggerResponse(StatusCodes.Status400BadRequest, "User is not a member of the board.", typeof(Result))]
+        [SwaggerResponse(StatusCodes.Status204NoContent)]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "User is not authorized to remove board members.", typeof(Result))]
-        [SwaggerResponse(StatusCodes.Status404NotFound, "Board not found.", typeof(Result))]
+        [SwaggerResponse(StatusCodes.Status404NotFound, "Board not found or user not in board.", typeof(Result))]
         public async Task<IActionResult> RemoveBoardMember(int boardId, int userId)
         {
             return ApiResult.GetIActionResult(await boardsService.RemoveBoardMember(boardId, userId));

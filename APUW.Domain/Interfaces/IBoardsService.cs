@@ -13,7 +13,7 @@ namespace APUW.Domain.Interfaces
         Task<Result<BoardDto>> UpdateBoard(int boardId, UpdateBoardRequestDto request);
         Task<Result> DeleteBoard(int boardId);
         Task<Result<List<UserDto>>> GetBoardMembers(int boardId);
-        Task<Result> AddBoardMember(int boardId, int userId);
+        Task<Result<BoardMemberDto>> AddBoardMember(int boardId, int userId);
         Task<Result> RemoveBoardMember(int boardId, int userId);
     }
 }

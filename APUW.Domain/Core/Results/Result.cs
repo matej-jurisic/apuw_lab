@@ -15,16 +15,16 @@ namespace APUW.Domain.Core.Results
 
     public class Result : ResultBase
     {
-        public static Result Success(string? message = null) => new()
+        public static Result Success(string? message = null, ResultStatus code = ResultStatus.Ok) => new()
         {
-            StatusCode = ResultStatus.Ok,
+            StatusCode = code,
             Messages = message != null ? [message] : []
         };
 
-        public static Result<T> Success<T>(T data, string? message = null) => new()
+        public static Result<T> Success<T>(T data, string? message = null, ResultStatus code = ResultStatus.Ok) => new()
         {
             Data = data,
-            StatusCode = ResultStatus.Ok,
+            StatusCode = code,
             Messages = message != null ? [message] : []
         };
 

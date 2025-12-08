@@ -25,7 +25,7 @@ namespace APUW.Tests.Tests.Integration
             var boardResponse = await _client.CreateBoard("Board1");
             var boardResult = await boardResponse.GetResult<BoardDto>(outputHelper);
 
-            Assert.Equal(HttpStatusCode.OK, boardResponse.StatusCode);
+            boardResponse.EnsureSuccessStatusCode();
             Assert.NotNull(boardResult?.Data);
             Assert.Equal(user.Username, boardResult.Data.OwnerUsername);
             Assert.True(boardResult.Data.IsOwner);
@@ -51,12 +51,12 @@ namespace APUW.Tests.Tests.Integration
             await _client.RegisterAndLogin();
 
             var board1 = await _client.CreateBoard("Board1");
-            Assert.Equal(HttpStatusCode.OK, board1.StatusCode);
+            board1.EnsureSuccessStatusCode();
 
             await _client.RegisterAndLogin();
 
             var board2 = await _client.CreateBoard("Board2");
-            Assert.Equal(HttpStatusCode.OK, board2.StatusCode);
+            board2.EnsureSuccessStatusCode();
 
             var response = await _client.GetAsync("/api/boards");
             var result = await response.GetResult<List<BoardDto>>(outputHelper);
@@ -74,7 +74,7 @@ namespace APUW.Tests.Tests.Integration
             await _client.Login(user.Username, user.Password);
 
             var board1 = await _client.CreateBoard($"{user.Username}'s Board");
-            Assert.Equal(HttpStatusCode.OK, board1.StatusCode);
+            board1.EnsureSuccessStatusCode();
 
             var admin = DataHelpers.GetAdminUserRegisterPayload();
             await _client.Login(admin.Username, admin.Password);
@@ -189,7 +189,7 @@ namespace APUW.Tests.Tests.Integration
             var board = await _client.CreateBoardAndGetResult("Board1", outputHelper);
 
             var deleteResponse = await _client.DeleteAsync($"/api/boards/{board.Id}");
-            Assert.Equal(HttpStatusCode.OK, deleteResponse.StatusCode);
+            deleteResponse.EnsureSuccessStatusCode();
 
             var response = await _client.GetAsync("/api/boards");
             var result = await response.GetResult<List<BoardDto>>(outputHelper);
@@ -209,7 +209,7 @@ namespace APUW.Tests.Tests.Integration
             var admin = DataHelpers.GetAdminUserRegisterPayload();
             await _client.Login(admin.Username, admin.Password);
             var deleteResponse = await _client.DeleteAsync($"/api/boards/{board.Id}");
-            Assert.Equal(HttpStatusCode.OK, deleteResponse.StatusCode);
+            deleteResponse.EnsureSuccessStatusCode();
 
             var response = await _client.GetAsync($"/api/boards/{board.Id}");
             var result = await response.GetResult<BoardDto>(outputHelper);
@@ -290,10 +290,10 @@ namespace APUW.Tests.Tests.Integration
             await _client.RegisterAndLogin();
             var board = await _client.CreateBoardAndGetResult("Board", outputHelper);
 
-            var (_, user) = await _client.CreateAndGetUser(outputHelper);
+            var (userId, user) = await _client.CreateAndGetUser(outputHelper);
             await _client.Login(user.Username, user.Password);
 
-            var response = await _client.AddMemberToBoard(board.Id, 100);
+            var response = await _client.AddMemberToBoard(board.Id, userId);
             Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         }
 
@@ -311,7 +311,7 @@ namespace APUW.Tests.Tests.Integration
             await _client.Login(user.Username, user.Password);
 
             var response = await _client.RemoveMemberFromBoard(board.Id, userId);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            response.EnsureSuccessStatusCode();
         }
 
         [Fact]

@@ -3,6 +3,7 @@ using APUW.Domain.Core.Results;
 using APUW.Domain.Interfaces;
 using APUW.Model.DTOs.Auth;
 using APUW.Model.DTOs.Auth.Requests;
+using APUW.Model.DTOs.Users;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -33,7 +34,7 @@ namespace APUW.API.Controllers
         /// </summary>
         [HttpPost("register")]
         [AllowAnonymous]
-        [SwaggerResponse(StatusCodes.Status200OK, "User successfully registered.", typeof(Result))]
+        [SwaggerResponse(StatusCodes.Status201Created, "User successfully registered.", typeof(Result<UserDto>))]
         [SwaggerResponse(StatusCodes.Status409Conflict, "Registration failed due to duplicate username.", typeof(Result))]
         [Produces("application/json")]
         public async Task<IActionResult> Register(RegisterRequestDto request)

@@ -11,7 +11,9 @@ namespace APUW.Domain.Core.Results
         Forbidden,
         NotFound,
         Conflict,
-        Error
+        Error,
+        NoContent,
+        Created
     }
 
 }

@@ -28,7 +28,7 @@ namespace APUW.Tests.Tests.Integration
             var response = await _client.CreateTicket("Ticket1", "Content", board.Id);
             var result = await response.GetResult<TicketDto>(outputHelper);
 
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            response.EnsureSuccessStatusCode();
             Assert.NotNull(result?.Data);
             Assert.Equal("Ticket1", result.Data.Name);
         }
@@ -115,8 +115,8 @@ namespace APUW.Tests.Tests.Integration
 
             await _client.RegisterAndLogin();
             var board = await _client.CreateBoardAndGetResult("Board1", outputHelper);
-            var ticket = await _client.CreateTicketAndGetResult(outputHelper, "Ticket1", "Content", board.Id, userId);
             await _client.AddMemberToBoard(board.Id, userId);
+            var ticket = await _client.CreateTicketAndGetResult(outputHelper, "Ticket1", "Content", board.Id, userId);
 
             await _client.Login(user.Username, user.Password);
             var response = await _client.UpdateTicket(board.Id, ticket.Id, "NewName", "NewContent", userId);
@@ -185,7 +185,7 @@ namespace APUW.Tests.Tests.Integration
             var response = await _client.DeleteAsync($"/api/boards/{board.Id}/tickets/{ticket.Id}");
             await response.GetResult(outputHelper);
 
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            response.EnsureSuccessStatusCode();
         }
 
         [Fact]

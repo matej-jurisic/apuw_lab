@@ -47,7 +47,7 @@ namespace APUW.API.Controllers
         /// </remarks>
         [HttpPost]
         [CheckRoles("User")]
-        [SwaggerResponse(StatusCodes.Status200OK, type: typeof(Result<TicketDto>))]
+        [SwaggerResponse(StatusCodes.Status201Created, type: typeof(Result<TicketDto>))]
         [SwaggerResponse(StatusCodes.Status400BadRequest, "Assigned user is not a member of the board.", typeof(Result))]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "User is not authorized to create tickets in this board.", typeof(Result))]
         [SwaggerResponse(StatusCodes.Status404NotFound, "Board not found.", typeof(Result))]
@@ -80,7 +80,7 @@ namespace APUW.API.Controllers
         /// Only accessible by the board owner.
         /// </remarks>
         [HttpDelete("{ticketId}")]
-        [SwaggerResponse(StatusCodes.Status200OK, type: typeof(Result))]
+        [SwaggerResponse(StatusCodes.Status204NoContent)]
         [SwaggerResponse(StatusCodes.Status403Forbidden, "User is not authorized to delete tickets in this board.", typeof(Result))]
         [SwaggerResponse(StatusCodes.Status404NotFound, "Ticket not found.", typeof(Result))]
         public async Task<IActionResult> DeleteTicket(int boardId, int ticketId)

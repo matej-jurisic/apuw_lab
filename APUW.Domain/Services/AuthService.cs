@@ -4,6 +4,7 @@ using APUW.Domain.Interfaces;
 using APUW.Model;
 using APUW.Model.DTOs.Auth;
 using APUW.Model.DTOs.Auth.Requests;
+using APUW.Model.DTOs.Users;
 using APUW.Model.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -59,7 +60,7 @@ namespace APUW.Domain.Services
             });
         }
 
-        public async Task<Result> Register(RegisterRequestDto request)
+        public async Task<Result<UserDto>> Register(RegisterRequestDto request)
         {
             var existsUser = await _context.Users.AnyAsync(x => x.Username == request.Username);
             if (existsUser)
@@ -71,7 +72,7 @@ namespace APUW.Domain.Services
 
             var role = await _context.Roles.FirstOrDefaultAsync(x => x.Name == "User");
 
-            return await _context.InTransaction(async () =>
+            var userResult = await _context.InTransaction(async () =>
             {
                 var user = (await _context.Users.AddAsync(new User()
                 {
@@ -94,6 +95,21 @@ namespace APUW.Domain.Services
 
                 return Result.Success();
             });
+
+            if (userResult.IsFailure) return userResult;
+
+            var userDto = await _context.Users
+                .Select(x => new UserDto
+                {
+                    Id = x.Id,
+                    Username = x.Username,
+                    Roles = x.UserRoles.Select(x => x.Role.Name).ToList()
+                })
+                .FirstOrDefaultAsync(x => x.Username == request.Username);
+
+            if (userDto == null) return Result.Failure(ResultStatus.Error);
+
+            return Result.Success(userDto, code: ResultStatus.Created);
         }
     }
 }

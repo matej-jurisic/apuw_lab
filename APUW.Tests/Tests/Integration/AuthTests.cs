@@ -68,7 +68,7 @@ namespace APUW.Tests.Tests.Integration
 
             var request = DataHelpers.GetUserRegisterPayload();
             var registerResponse = await client.Register(request.Username, request.Password);
-            Assert.Equal(HttpStatusCode.OK, registerResponse.StatusCode);
+            Assert.Equal(HttpStatusCode.Created, registerResponse.StatusCode);
 
             var response = await client.Login(request.Username, request.Password);
             var result = await response.GetResult(outputHelper);
